@@ -1,16 +1,21 @@
-# This is a sample Python script.
+from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
+from routers import employees, customers, categories, suppliers
+app = FastAPI(title="Store Management API")
 
-# Press Shift+F10 to execute it or replace it with your code.
-# Press Double Shift to search everywhere for classes, files, tool windows, actions, and settings.
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"]
+)
 
+app.include_router(employees.router )
+app.include_router(customers.router )
+app.include_router(categories.router )
+app.include_router(suppliers.router )
 
-def print_hi(name):
-    # Use a breakpoint in the code line below to debug your script.
-    print(f'Hi, {name}')  # Press Ctrl+F8 to toggle the breakpoint.
-
-
-# Press the green button in the gutter to run the script.
-if __name__ == '__main__':
-    print_hi('PyCharm')
-
-# See PyCharm help at https://www.jetbrains.com/help/pycharm/
+@app.get("/")
+def root():
+    return {"status": "API is running"}
