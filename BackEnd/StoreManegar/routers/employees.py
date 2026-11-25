@@ -3,11 +3,12 @@ import pymysql
 from database import get_db
 from schemas.employee import EmployeeCreate, EmployeeUpdate
 import uuid
+from utils.auth import require_role
 router = APIRouter(prefix="/employees", tags=["Employees"])
 
 # 1. Create: adding new employee
 @router.post("/", status_code=status.HTTP_201_CREATED)
-def create_employee(employee: EmployeeCreate, conn=Depends(get_db)):
+def create_employee(employee: EmployeeCreate, conn=Depends(get_db), current_user: dict = Depends(require_role(["admin"]))):
     try:
         with conn.cursor() as cursor:
             eid = str(uuid.uuid4())
@@ -35,7 +36,7 @@ def create_employee(employee: EmployeeCreate, conn=Depends(get_db)):
 
 # 2. Search for Employee or list all of them
 @router.get("/")
-def get_employees(search: str | None = None, conn=Depends(get_db)):
+def get_employees(search: str | None = None, conn=Depends(get_db), current_user: dict = Depends(require_role(["admin"]))):
     try:
         with conn.cursor() as cursor:
             if search:
@@ -58,7 +59,7 @@ def get_employees(search: str | None = None, conn=Depends(get_db)):
 
 # 3. Read Single Employee: get a specific log for filling the edit form in the ui
 @router.get("/{eid}")
-def get_an_employee(eid : str, conn=Depends(get_db)):
+def get_an_employee(eid : str, conn=Depends(get_db), current_user: dict = Depends(require_role(["admin"]))):
     try:
         with conn.cursor() as cursor:
             sql = """
@@ -76,7 +77,7 @@ def get_an_employee(eid : str, conn=Depends(get_db)):
 
 # 4. Update an Employee
 @router.put("/{eid}")
-def update_employee(eid: str, employee: EmployeeUpdate, conn=Depends(get_db)):
+def update_employee(eid: str, employee: EmployeeUpdate, conn=Depends(get_db), current_user: dict = Depends(require_role(["admin"]))):
     try:
         with conn.cursor() as cursor:
             sql = """
@@ -100,7 +101,7 @@ def update_employee(eid: str, employee: EmployeeUpdate, conn=Depends(get_db)):
 
 # 4. Delete:
 @router.delete("/{eid}")
-def delete_employee(eid: int, conn=Depends(get_db)):
+def delete_employee(eid: str, conn=Depends(get_db), current_user: dict = Depends(require_role(["admin"]))):
     try:
         with conn.cursor() as cursor:
             sql = "DELETE FROM employee WHERE eid = %s"
@@ -108,6 +109,8 @@ def delete_employee(eid: int, conn=Depends(get_db)):
 
             if cursor.rowcount == 0:
                 raise HTTPException(status_code=404, detail="employee not found")
+            if eid == current_user["eID"]:
+                raise HTTPException(status_code=400, detail="You cannot delete your own account.")
 
             conn.commit()
             return {"message": "employee deleted successfully"}

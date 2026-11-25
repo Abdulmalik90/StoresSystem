@@ -3,8 +3,8 @@ import pymysql
 from database import get_db
 from schemas.customer import CreateUpdate_Customer
 import uuid
-
-router = APIRouter(prefix="/customers", tags=["Customers"])
+from utils.auth import require_role
+router = APIRouter(prefix="/customers", tags=["Customers"], dependencies=[Depends(require_role(["admin", "cashier"]))])
 
 # Create Customer
 @router.post('/', status_code=status.HTTP_201_CREATED)
@@ -70,7 +70,7 @@ def get_a_customer(cid : str, conn=Depends(get_db)):
 
 # Update Customer
 @router.put("/{cid}")
-def update_customer(cid: str, customer: CreateUpdate_Customer,conn=Depends(get_db)):
+def update_customer(cid: str, customer: CreateUpdate_Customer,conn=Depends(get_db), current_user: dict = Depends(require_role(["admin"]))):
     try:
         with conn.cursor() as cursor:
             sql = """
@@ -95,7 +95,7 @@ def update_customer(cid: str, customer: CreateUpdate_Customer,conn=Depends(get_d
 
 # Delete Customer
 @router.delete("/{cid}")
-def delete_customer(cid: str, conn = Depends(get_db)):
+def delete_customer(cid: str, conn = Depends(get_db), current_user: dict = Depends(require_role(["admin"]))):
     try:
         with conn.cursor() as cursor:
             sql = """

@@ -3,12 +3,12 @@ import pymysql
 from database import get_db
 from schemas.category import CreateUpdate_Category
 import uuid
-
-router = APIRouter(prefix="/categories", tags=["Categories"])
+from utils.auth import require_role
+router = APIRouter(prefix="/categories", tags=["Categories"], dependencies=[Depends(require_role(["admin", "cashier"]))])
 
 # Create category
 @router.post('/', status_code=status.HTTP_201_CREATED)
-def create_category(category: CreateUpdate_Category, conn=Depends(get_db)):
+def create_category(category: CreateUpdate_Category, conn=Depends(get_db), current_user: dict = Depends(require_role(["admin"]))):
     try:
         with conn.cursor() as cursor:
             cat_id = str(uuid.uuid4())
@@ -72,7 +72,7 @@ def get_categories(search: str | None = None, conn=Depends(get_db)):
 
 # Update category
 @router.put("/{category_id}")
-def update_category(category_id: str, category: CreateUpdate_Category,conn=Depends(get_db)):
+def update_category(category_id: str, category: CreateUpdate_Category,conn=Depends(get_db), current_user: dict = Depends(require_role(["admin"]))):
     try:
         with conn.cursor() as cursor:
             sql = """
@@ -97,7 +97,7 @@ def update_category(category_id: str, category: CreateUpdate_Category,conn=Depen
 
 # Delete category
 @router.delete("/{category_id}")
-def delete_category(category_id: str, conn = Depends(get_db)):
+def delete_category(category_id: str, conn = Depends(get_db), current_user: dict = Depends(require_role(["admin"]))):
     try:
         with conn.cursor() as cursor:
             sql = """

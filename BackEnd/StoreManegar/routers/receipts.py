@@ -4,8 +4,8 @@ import pymysql
 from fastapi import APIRouter, Depends, HTTPException, status
 from database import get_db
 from schemas.receipt import ReceiptCreate, ReceiptUpdate
-
-router = APIRouter(prefix="/receipts", tags=["Receipts"])
+from utils.auth import require_role
+router = APIRouter(prefix="/receipts", tags=["Receipts"], dependencies=[Depends(require_role(["admin", "cashier"]))])
 
 #Create a Receipt
 @router.post("/", status_code=status.HTTP_201_CREATED)
@@ -18,17 +18,17 @@ def create_receipt(receipt: ReceiptCreate, conn=Depends(get_db)):
             prepared_items = []
 
             for item in receipt.items:
-                sql_check = "SELECT price, discount, quantity from product where pid = %s for update"
+                sql_check = "SELECT pname, price, discount, quantity from product where pid = %s for update"
                 cursor.execute(sql_check, (item.pid,))
                 product = cursor.fetchone()
 
                 if not product:
                     conn.rollback()
-                    raise HTTPException(status_code=404, detail=f"Product {item.pid} not found")
+                    raise HTTPException(status_code=404, detail=f"Product with id:'{item.pid}' not found")
 
                 if product["quantity"] < item.quantity:
                     conn.rollback()
-                    raise HTTPException(status_code=400, detail=f"Insufficient quantity for product {item.pid}")
+                    raise HTTPException(status_code=400, detail=f"Insufficient quantity for product {product["pname"]}")
 
                 unit_price = product["price"]
                 unit_discount = product["discount"] or Decimal("0.00")
@@ -137,7 +137,7 @@ def get_receipt_details(rid: str, conn=Depends(get_db)):
         raise HTTPException(status_code=500, detail=f"Database error: {str(e)}")
 
 @router.put("/{rid}")
-def update_receipt(rid: str, reciept: ReceiptUpdate, conn=Depends(get_db)):
+def update_receipt(rid: str, reciept: ReceiptUpdate, conn=Depends(get_db), current_user: dict = Depends(require_role(["admin"]))):
     try:
         with conn.cursor() as cursor:
             sql = "UPDATE receipt SET cid = %s, eid = %s WHERE rid = %s"
@@ -155,7 +155,7 @@ def update_receipt(rid: str, reciept: ReceiptUpdate, conn=Depends(get_db)):
 
 
 @router.delete("/{rid}")
-def delete_order(rid: str, conn=Depends(get_db)):
+def delete_receipt(rid: str, conn=Depends(get_db), current_user: dict = Depends(require_role(["admin"]))):
     try:
         with conn.cursor() as cursor:
             cursor.execute("SELECT pid, quantity_sold FROM receipt_product WHERE rid = %s", (rid,))

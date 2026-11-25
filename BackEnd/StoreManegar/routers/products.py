@@ -3,12 +3,13 @@ import pymysql
 from database import get_db
 from schemas.product import CreateUpdate_Product
 import uuid
+from utils.auth import require_role
 
-router = APIRouter(prefix="/products", tags=["Products"])
+router = APIRouter(prefix="/products", tags=["Products"], dependencies=[Depends(require_role(["admin", "cashier"]))])
 
 # Create product
 @router.post('/', status_code=status.HTTP_201_CREATED)
-def create_product(product: CreateUpdate_Product, conn=Depends(get_db)):
+def create_product(product: CreateUpdate_Product, conn=Depends(get_db), current_user: dict = Depends(require_role(["admin"]))):
     try:
         with conn.cursor() as cursor:
             pid = str(uuid.uuid4())
@@ -86,7 +87,7 @@ def get_a_product(pid : str, conn=Depends(get_db)):
 
 # Update product
 @router.put("/{pid}")
-def update_product(pid: str, product: CreateUpdate_Product,conn=Depends(get_db)):
+def update_product(pid: str, product: CreateUpdate_Product,conn=Depends(get_db), current_user: dict = Depends(require_role(["admin"]))):
     try:
         with conn.cursor() as cursor:
             sql = """
@@ -112,7 +113,7 @@ def update_product(pid: str, product: CreateUpdate_Product,conn=Depends(get_db))
 
 # Delete product
 @router.delete("/{pid}")
-def delete_product(pid: str, conn = Depends(get_db)):
+def delete_product(pid: str, conn = Depends(get_db), current_user: dict = Depends(require_role(["admin"]))):
     try:
         with conn.cursor() as cursor:
             sql = """

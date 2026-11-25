@@ -3,8 +3,8 @@ import pymysql
 from database import get_db
 from schemas.supplier import CreateUpdate_Supplier
 import uuid
-
-router = APIRouter(prefix="/suppliers", tags=["Suppliers"])
+from utils.auth import require_role
+router = APIRouter(prefix="/suppliers", tags=["Suppliers"], dependencies=[Depends(require_role(["admin"]))])
 
 # Create supplier
 @router.post('/', status_code=status.HTTP_201_CREATED)
