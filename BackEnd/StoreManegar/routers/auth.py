@@ -3,7 +3,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from database import get_db
 from schemas.auth import GoogleLoginRequest
 from utils.auth import verify_google_token, create_access_token
-
+from utils.auth import get_current_user
 router = APIRouter(prefix="/auth", tags=["Authentication"])
 
 @router.post("/google")
@@ -62,3 +62,7 @@ def login_with_google(payload: GoogleLoginRequest, conn=Depends(get_db)):
     except pymysql.MySQLError as e:
         conn.rollback()
         raise HTTPException(status_code=500, detail=f"Database error: {str(e)}")
+
+@router.get("/me")
+def get_my_profile(current_user: dict = Depends(get_current_user)):
+    return current_user
